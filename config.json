@@ -1,0 +1,15 @@
+{
+    "libp2p": {
+        "port": 4432,
+        "certPath": "priv.pem",
+        "dbPath": "sample-app.db"
+    },
+    "admin": {
+        "port": 8000
+    },
+    "sampleApp": {
+        "directory": "localhost:8080",
+        "numPeers": 10,
+        "activityPeriodSecs": 10
+    }
+}
