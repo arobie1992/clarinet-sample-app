@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,9 @@ import (
 	"github.com/arobie1992/go-clarinet/control"
 	"github.com/arobie1992/go-clarinet/log"
 	"github.com/arobie1992/go-clarinet/p2p"
+	"github.com/arobie1992/go-clarinet/repository"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func main() {
@@ -43,20 +47,25 @@ func scheduler() {
 	if err := registerWithDirectory(cfg); err != nil {
 		log.Log().Fatalf("Failed to register with directory: %s", err)
 	}
-	for {
+	for i := 0;; {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
+		if i >= cfg.SampleApp.TotalActions {
+			// after total actions, it can still receive requests from other peers, but it will take no proactive action
+			continue
+		}
 		switch rand.Intn(5) {
 		case 0:
 			initiateConnection(cfg)
 		case 1:
-			// sendData()
+			sendData()
 		case 2:
-			// closeConnection()
+			closeConnection()
 		case 3:
-			// query()
+			query()
 		case 4:
 			// just idle
 		}
+		i += 1
 	}
 }
 
@@ -92,10 +101,81 @@ func initiateConnection(cfg *Config) {
 	}
 }
 
+func sendData() {
+	conn, err := randomOpenOutgoingConnection()
+	if err != nil {
+		log.Log().Errorf("Failed to find open outgoing connection: %s", err)
+		return
+	}
+
+	// make a message that's 1000 random bytes
+	msg := make([]byte, 1000)
+	crand.Read(msg)
+	if err := p2p.SendData(conn.ID, msg); err != nil {
+		log.Log().Errorf("Failed to send data on conn %s: %s", conn.ID, err)
+	}
+}
+
+func randomOpenOutgoingConnection() (p2p.Connection, error) {
+	conn := p2p.Connection{}
+	conn.Sender = p2p.GetFullAddr()
+	conn.Status = p2p.ConnectionStatusOpen
+
+	tx := repository.GetDB().Model(&conn).Clauses(clause.OrderBy{Expression: gorm.Expr("RANDOM()")}).Limit(1).Take(&conn)
+	if tx.Error != nil {
+		return p2p.Connection{}, tx.Error
+	}
+	return conn, nil
+}
+
+func closeConnection() {
+	conn, err := randomOpenOutgoingConnection()
+	if err != nil {
+		log.Log().Info("No open connections to close")
+		return
+	}
+	if err := control.CloseConnection(conn.ID); err != nil {
+		log.Log().Errorf("Failed to close connection %s: %s", conn.ID, err)
+	}
+}
+
+func query() {
+	messages := []p2p.DataMessage{}
+	tx := repository.GetDB().Model(&p2p.DataMessage{}).Clauses(clause.OrderBy{Expression: gorm.Expr("RANDOM()")}).Limit(1).Find(&messages)
+	if tx.Error != nil {
+		log.Log().Errorf("Failed to find a message to query: %s", tx.Error)
+		return
+	}
+	message := messages[0]
+	conn := p2p.Connection{ID: message.ConnID}
+	tx = repository.GetDB().Find(&conn)
+	if tx.Error != nil {
+		log.Log().Errorf("Failed to find connectin %s: %s", conn.ID, tx.Error)
+		return
+	}
+	others := filter(conn.Participants(), func(p string) bool { return p != p2p.GetFullAddr() })
+
+	if err := control.QueryForMessage(others[rand.Intn(len(others))], conn, message.SeqNo); err != nil {
+		log.Log().Errorf("Query for %s:%d failed: %s", message.ConnID, message.SeqNo, err)
+	}
+}
+
+func filter[T interface{}](vals []T, cond func(T) bool) []T {
+	filtered := []T{}
+	for _, v := range vals {
+		if cond(v) {
+			filtered = append(filtered, v)
+		}
+	}
+	return filtered
+}
+
 type sampleAppConfig struct {
 	Directory          string
 	NumPeers           int
+	MinPeers           int
 	ActivityPeriodSecs int
+	TotalActions       int
 }
 
 type Config struct {
@@ -136,23 +216,26 @@ func registerWithDirectory(cfg *Config) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("Failed to register")
 	}
-	url := fmt.Sprintf("http://%s/peers?numPeers=%d&requestor=%s", cfg.SampleApp.Directory, cfg.SampleApp.NumPeers, p2p.GetFullAddr())
-	resp, err = http.Get(url)
-	if err != nil {
-		return err
-	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	peersResp := listPeersResponse{}
-	if err := json.Unmarshal(data, &peersResp); err != nil {
-		return err
-	}
-	for _, p := range peersResp.Peers {
-		if _, err := p2p.AddPeer(p); err != nil {
-			log.Log().Warnf("Failed to add peer %s: %s", p, err)
+	for len(p2p.GetLibp2pNode().Peerstore().Peers()) < cfg.SampleApp.MinPeers+1 {
+		url := fmt.Sprintf("http://%s/peers?numPeers=%d&requestor=%s", cfg.SampleApp.Directory, cfg.SampleApp.NumPeers, p2p.GetFullAddr())
+		resp, err = http.Get(url)
+		if err != nil {
+			return err
+		}
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		peersResp := listPeersResponse{}
+		if err := json.Unmarshal(data, &peersResp); err != nil {
+			return err
+		}
+		for _, p := range peersResp.Peers {
+			if _, err := p2p.AddPeer(p); err != nil {
+				log.Log().Warnf("Failed to add peer %s: %s", p, err)
+			}
 		}
 	}
+	log.Log().Info("Got minimum number of peers necessary to proceed")
 	return nil
 }
