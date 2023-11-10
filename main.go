@@ -22,16 +22,22 @@ import (
 )
 
 func main() {
+	if len(os.Args) != 2 {
+		log.Log().Fatal("Must provide config file.")
+	}
+
+	cfgFile := os.Args[1]
+
 	go func() {
-		if err := goclarinet.Start("config.json"); err != nil {
+		if err := goclarinet.Start(cfgFile); err != nil {
 			log.Log().Fatalf("%s", err)
 		}
 	}()
-	scheduler()
+	scheduler(cfgFile)
 }
 
 // this will be what makes connections and transfers data
-func scheduler() {
+func scheduler(cfgFile string) {
 	fullAddr := p2p.GetFullAddr()
 	for fullAddr == "" {
 		time.Sleep(1 * time.Second)
@@ -39,7 +45,7 @@ func scheduler() {
 	}
 	log.Log().Infof("Node is now up and running: %s", fullAddr)
 
-	cfg, err := loadConfig("config.json")
+	cfg, err := loadConfig(cfgFile)
 	if err != nil {
 		log.Log().Fatal("Failed to load config")
 	}
@@ -74,31 +80,58 @@ type peerResponse struct {
 }
 
 func initiateConnection(cfg *Config) {
-	url := fmt.Sprintf("http://%s/peers/random?requestor=%s", cfg.SampleApp.Directory, p2p.GetFullAddr())
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Log().Errorf("Error while getting random peer: %s", err)
+	peer := ""
+	for i := 0; i < 5; i++ {
+		possiblePeer, err := randomPeer()
+		if err != nil {
+			log.Log().Error("Error while getting peer: %s", err)
+			continue
+		}
+	
+		var cnt int64 = 0
+		repository.GetDB().Model(&p2p.Connection{Receiver: possiblePeer}).Count(&cnt)
+		if cnt == 0 {
+			peer = possiblePeer
+			break
+		}
+	}
+
+	if peer == "" {
+		log.Log().Warn("Failed to find peer")
 		return
 	}
 
+	if err := control.RequestConnection(peer); err != nil {
+		log.Log().Errorf("Failed to request connection to %s: %s", peer, err)
+	}
+}
+
+func randomPeer() (string, error) {
+	url := fmt.Sprintf("http://%s/peers/random?requestor=%s", cfg.SampleApp.Directory, p2p.GetFullAddr())
+	resp, err := http.Get(url)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error while getting random peer: %s", err)
+		return "", errors.New(errMsg)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		log.Log().Errorf("Resp was not OK: %s", resp.Status)
-		return
+		errMsg := fmt.Sprintf("Resp was not OK: %s", resp.Status)
+		return "", errors.New(errMsg)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Log().Errorf("Failed to read body: %s", err)
+		errMsg := fmt.Sprintf("Failed to read body: %s", err)
+		return "", errors.New(errMsg)
 	}
 
 	pr := peerResponse{}
 	if err := json.Unmarshal(body, &pr); err != nil {
-		log.Log().Errorf("Failed to unmarshal body %s: %s", body, err)
+		errMsg := fmt.Sprintf("Failed to unmarshal body %s: %s", body, err)
+		return "", errors.New(errMsg)
 	}
 
-	if err := control.RequestConnection(pr.Peer); err != nil {
-		log.Log().Errorf("Failed to request connection to %s: %s", pr.Peer, err)
-	}
+	return pr.Peer, nil
 }
 
 func sendData() {
