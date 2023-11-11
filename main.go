@@ -80,9 +80,10 @@ type peerResponse struct {
 }
 
 func initiateConnection(cfg *Config) {
+	// might change this to max connections instead
 	peer := ""
 	for i := 0; i < 5; i++ {
-		possiblePeer, err := randomPeer()
+		possiblePeer, err := randomPeer(cfg)
 		if err != nil {
 			log.Log().Error("Error while getting peer: %s", err)
 			continue
@@ -106,7 +107,7 @@ func initiateConnection(cfg *Config) {
 	}
 }
 
-func randomPeer() (string, error) {
+func randomPeer(cfg *Config) (string, error) {
 	url := fmt.Sprintf("http://%s/peers/random?requestor=%s", cfg.SampleApp.Directory, p2p.GetFullAddr())
 	resp, err := http.Get(url)
 	if err != nil {
