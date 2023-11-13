@@ -56,7 +56,8 @@ func scheduler(cfgFile string) {
 	}
 	for i := 0; i < cfg.SampleApp.TotalActions; i += 1 {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
-		switch rand.Intn(1) {
+		switch rand.Intn(5) {
+		// switch i {
 		case 0:
 			initiateConnection(cfg)
 		case 1:
@@ -81,6 +82,7 @@ type peerResponse struct {
 }
 
 func initiateConnection(cfg *Config) {
+	log.Log().Info("Attempting to initiate connection.")
 	// might change this to max connections instead
 	peer := ""
 	for i := 0; i < 5; i++ {
@@ -137,6 +139,7 @@ func randomPeer(cfg *Config) (string, error) {
 }
 
 func sendData() {
+	log.Log().Info("Attempting to send data.")
 	conn, err := randomOpenOutgoingConnection()
 	if err != nil {
 		log.Log().Errorf("Failed to find open outgoing connection: %s", err)
@@ -164,6 +167,7 @@ func randomOpenOutgoingConnection() (p2p.Connection, error) {
 }
 
 func closeConnection() {
+	log.Log().Info("Attempting to close a connection.")
 	conn, err := randomOpenOutgoingConnection()
 	if err != nil {
 		log.Log().Info("No open connections to close")
@@ -175,6 +179,7 @@ func closeConnection() {
 }
 
 func query() {
+	log.Log().Info("Attempting to query another node for a message.")
 	messages := []p2p.DataMessage{}
 	tx := repository.GetDB().Model(&p2p.DataMessage{}).Clauses(clause.OrderBy{Expression: gorm.Expr("RANDOM()")}).Limit(1).Find(&messages)
 	if len(messages) == 0 {
