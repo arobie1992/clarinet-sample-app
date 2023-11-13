@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	goclarinet "github.com/arobie1992/go-clarinet"
@@ -53,13 +54,9 @@ func scheduler(cfgFile string) {
 	if err := registerWithDirectory(cfg); err != nil {
 		log.Log().Fatalf("Failed to register with directory: %s", err)
 	}
-	for i := 0;; {
+	for i := 0; i < cfg.SampleApp.TotalActions; i += 1 {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
-		if i >= cfg.SampleApp.TotalActions {
-			// after total actions, it can still receive requests from other peers, but it will take no proactive action
-			continue
-		}
-		switch rand.Intn(5) {
+		switch rand.Intn(1) {
 		case 0:
 			initiateConnection(cfg)
 		case 1:
@@ -71,8 +68,12 @@ func scheduler(cfgFile string) {
 		case 4:
 			// just idle
 		}
-		i += 1
 	}
+	log.Log().Info("Finished own actions. Now just idle and respond to other nodes.")
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+	log.Log().Info("Received keyboard interrupt. Shutting down.")
 }
 
 type peerResponse struct {
