@@ -85,7 +85,7 @@ func initiateConnection(cfg *Config) {
 	for i := 0; i < 5; i++ {
 		possiblePeer, err := randomPeer(cfg)
 		if err != nil {
-			log.Log().Error("Error while getting peer: %s", err)
+			log.Log().Errorf("Error while getting peer: %s", err)
 			continue
 		}
 	
@@ -176,8 +176,12 @@ func closeConnection() {
 func query() {
 	messages := []p2p.DataMessage{}
 	tx := repository.GetDB().Model(&p2p.DataMessage{}).Clauses(clause.OrderBy{Expression: gorm.Expr("RANDOM()")}).Limit(1).Find(&messages)
+	if len(messages) == 0 {
+		log.Log().Info("No messages to query.")
+		return
+	}
 	if tx.Error != nil {
-		log.Log().Errorf("Failed to find a message to query: %s", tx.Error)
+		log.Log().Errorf("Encountered error while attempting to find message to query: %s", tx.Error)
 		return
 	}
 	message := messages[0]
