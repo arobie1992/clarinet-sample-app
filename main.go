@@ -93,7 +93,7 @@ func initiateConnection(cfg *Config) {
 		}
 	
 		var cnt int64 = 0
-		repository.GetDB().Model(&p2p.Connection{Receiver: possiblePeer}).Count(&cnt)
+		repository.GetDB().Model(&p2p.Connection{}).Where(&p2p.Connection{Receiver: possiblePeer, Status: p2p.ConnectionStatusOpen}).Count(&cnt)
 		if cnt == 0 {
 			peer = possiblePeer
 			break
