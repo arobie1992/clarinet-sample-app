@@ -3,7 +3,7 @@ module arobie1992github.com/arobie1992/clarinet-sample-app
 go 1.21.1
 
 require (
-	github.com/arobie1992/go-clarinet v0.0.0-20231121224640-6a535287188a // indirect
+	github.com/arobie1992/go-clarinet v0.0.0-20231125213857-f0577a92b5ed // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
