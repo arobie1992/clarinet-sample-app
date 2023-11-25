@@ -1,10 +1,14 @@
 #!/bin/bash
 
 validate_go() {
-    if [[ "$(go version)" = "go version go1.21.4 linux/amd64" ]]; then
-        echo "OK"
-    else
-        echo "FAILED"
+    if [[ -z "$(which go)" ]]; then
+        echo "NOT_INSTALLED"
+    else 
+        if [[ "$(go version)" = "go version go1.21.4 linux/amd64" ]]; then
+            echo "OK"
+        else
+            echo "WRONG_VERSION"
+        fi
     fi
 }
 
@@ -39,6 +43,7 @@ build_app() {
 
     cd clarinet-sample-app/
     go build
+    cd ..
 }
 
 create_configs() {
@@ -71,17 +76,25 @@ create_configs() {
     for i in $(seq 1 $num_configs); do
         local port=$((4000+i))
         local admin_port=$((8000+i))
-        eval "echo \"$config_template\"" > "gen-config${i}.json"
+        local config_name="gen-config${i}.json"
+        echo "creating config $config_name"
+        eval "echo \"$config_template\"" > "$config_name"
     done
 }
 
 start_nodes() {
-    if [[ -z "$(ls clarinet-sample-app/clarinet-sample-app)" ]];
+    if [[ ! -f "clarinet-sample-app/clarinet-sample-app" ]]; then
+        echo "app not present -- will now setup"
         build_app
     fi
 
-    for cf in ./gen-config*.json; do
-        clarinet-sample-app/clarinet-sample-app "$cf" > "node-${cf}.log" 2>&1 &
+    for cf in gen-config*.json; do
+        local qualifier="$(echo $cf | cut -f1 -d '.')"
+        echo "starting $cf"
+        clarinet-sample-app/clarinet-sample-app "$cf" > "node-${qualifier}.log" 2>&1 &
+        if [[ "$?" != 0 ]]; then
+            echo "failed to start $cf"
+        fi
     done
 }
 
@@ -92,5 +105,5 @@ min_peers=2
 activity_period=5
 total_actions=10
 
-create_configs 2 "directory:8080" 10 5 5 1000
+create_configs "$num_configs" "$directory_url" "$num_peers" "$min_peers" "$activity_period" "$total_actions"
 start_nodes
