@@ -24,7 +24,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		log.Log().Fatal("Must provide config file.")
+		panic("Must provide config file.")
 	}
 
 	cfgFile := os.Args[1]
