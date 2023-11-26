@@ -42,7 +42,7 @@ install_app() {
         sudo apt install wget -y
     fi
 
-    wget https://github.com/arobie1992/clarinet-sample-app/raw/main/clarinet-sample-app-linux-x86_64
+    wget https://github.com/arobie1992/clarinet-sample-app/raw/main/cloud/clarinet-sample-app-linux-x86_64
     if [[ ! -f "clarinet-sample-app-linux-x86_64" ]]; then
         echo "failed to download executable"
         exit 1
