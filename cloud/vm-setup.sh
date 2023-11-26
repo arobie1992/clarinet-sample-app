@@ -1,51 +1,5 @@
 #!/bin/bash
 
-validate_go() {
-    if [[ -z "$(which go)" ]]; then
-        echo "NOT_INSTALLED"
-    else 
-        if [[ "$(go version)" = "go version go1.21.4 linux/amd64" ]]; then
-            echo "OK"
-        else
-            echo "WRONG_VERSION"
-        fi
-    fi
-}
-
-setup_go() {
-    sudo add-apt-repository ppa:longsleep/golang-backports -y
-    sudo apt update
-    sudo apt install golang -y
-
-    if [[ "$(validate_go)" != "OK" ]]; then
-        echo "Failed to install Go"
-        exit 1
-    fi
-}
-
-install_app() {
-    if [[ -z "$(which git)" ]]; then
-        sudo apt update
-        sudo apt install git -y
-    fi
-
-    git clone https://github.com/arobie1992/clarinet-sample-app.git
-}
-
-build_app() {
-    if [[ "$(validate_go)" != "OK" ]]; then
-        setup_go
-    fi
-
-    if [[ ! -d "clarinet-sample-app" ]]; then
-        install_app
-    fi
-
-    cd clarinet-sample-app/
-    go build
-    cd ..
-}
-
 create_configs() {
     local num_configs=$1
     local directory_url=$2
@@ -82,18 +36,33 @@ create_configs() {
     done
 }
 
+install_app() {
+    if [[ -z "$(which wget)" ]]; then
+        sudo apt update
+        sudo apt install wget -y
+    fi
+
+    wget https://github.com/arobie1992/clarinet-sample-app/raw/main/clarinet-sample-app-linux-x86_64
+    if [[ ! -f "clarinet-sample-app-linux-x86_64" ]]; then
+        echo "failed to download executable"
+        exit 1
+    fi
+    chmod +x clarinet-sample-app-linux-x86_64
+}
+
 start_nodes() {
-    if [[ ! -f "clarinet-sample-app/clarinet-sample-app" ]]; then
-        echo "app not present -- will now setup"
-        build_app
+    if [[ ! -f "clarinet-sample-app-linux-x86_64" ]]; then
+        echo "app not present -- will now install"
+        install_app
     fi
 
     for cf in gen-config*.json; do
         local qualifier="$(echo $cf | cut -f1 -d '.')"
         echo "starting $cf"
-        clarinet-sample-app/clarinet-sample-app "$cf" > "node-${qualifier}.log" 2>&1 &
-        if [[ "$?" != 0 ]]; then
+        ./clarinet-sample-app-linux-x86_64 "$cf" > "node-${qualifier}.log" 2>&1 &
+        if [[ "$(ps -ef | grep "$cf" -m 1 | cut -f 2 -d ".")" != "/clarinet-sample-app-linux-x86_64 $qualifier" ]]; then
             echo "failed to start $cf"
+            exit 1
         fi
     done
 }
@@ -105,5 +74,7 @@ min_peers=2
 activity_period=5
 total_actions=10
 
+mkdir /clarinet
+cd /clarinet
 create_configs "$num_configs" "$directory_url" "$num_peers" "$min_peers" "$activity_period" "$total_actions"
 start_nodes
