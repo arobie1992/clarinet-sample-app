@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	goclarinet "github.com/arobie1992/go-clarinet"
@@ -18,6 +19,7 @@ import (
 	"github.com/arobie1992/go-clarinet/log"
 	"github.com/arobie1992/go-clarinet/p2p"
 	"github.com/arobie1992/go-clarinet/repository"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -56,7 +58,7 @@ func scheduler(cfgFile string) {
 	}
 	for i := 0; i < cfg.SampleApp.TotalActions; i += 1 {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
-		switch rand.Intn(5) {
+		switch rand.Intn(6) {
 		// switch i {
 		case 0:
 			initiateConnection(cfg)
@@ -67,6 +69,8 @@ func scheduler(cfgFile string) {
 		case 3:
 			query()
 		case 4:
+			requestPeers()
+		case 5:
 			// just idle
 		}
 	}
@@ -210,6 +214,29 @@ func query() {
 
 	if err := control.QueryForMessage(others[rand.Intn(len(others))], conn, message.SeqNo); err != nil {
 		log.Log().Errorf("Query for %s:%d failed: %s", message.ConnID, message.SeqNo, err)
+	}
+}
+
+func requestPeers() {
+	peers := filter(p2p.GetLibp2pNode().Peerstore().Peers(), func(peerID peer.ID) bool {
+		return !strings.Contains(p2p.GetFullAddr(), peerID.String())
+	})
+
+	if len(peers) == 0 {
+		log.Log().Info("No peers available to request peers from.")
+		return
+	}
+
+	ind := rand.Intn(len(peers))
+	peer := peers[ind]
+	addrs := p2p.GetLibp2pNode().Peerstore().Addrs(peer)
+	if len(addrs) == 0 {
+		log.Log().Warnf("Peer %s has no addresses.", peer)
+		return
+	}
+	addr := addrs[0].String() + "/p2p/" + peer.String()
+	if err := control.SendRequestPeersRequest(addr, 10); err != nil {
+		log.Log().Errorf("Got error while requesting peers from node %s: %s", addr, err)
 	}
 }
 
