@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"arobie1992github.com/arobie1992/clarinet-sample-app/metrics"
 	goclarinet "github.com/arobie1992/go-clarinet"
 	"github.com/arobie1992/go-clarinet/control"
 	"github.com/arobie1992/go-clarinet/log"
@@ -74,7 +75,8 @@ func scheduler(cfgFile string) {
 			// just idle
 		}
 	}
-	log.Log().Info("Finished own actions. Now just idle and respond to other nodes.")
+	log.Log().Info("Finished own actions. Send metrics and then just idle and respond to other nodes.")
+	metrics.SendMetrics(cfg.SampleApp.Directory)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
@@ -95,7 +97,7 @@ func initiateConnection(cfg *Config) {
 			log.Log().Errorf("Error while getting peer: %s", err)
 			continue
 		}
-	
+
 		var cnt int64 = 0
 		repository.GetDB().Model(&p2p.Connection{}).Where(&p2p.Connection{Receiver: possiblePeer, Status: p2p.ConnectionStatusOpen}).Count(&cnt)
 		if cnt == 0 {
@@ -109,9 +111,11 @@ func initiateConnection(cfg *Config) {
 		return
 	}
 
-	if err := control.RequestConnection(peer); err != nil {
+	connID, err := control.RequestConnection(peer)
+	if err != nil {
 		log.Log().Errorf("Failed to request connection to %s: %s", peer, err)
 	}
+	metrics.AddConnOpen(connID)
 }
 
 func randomPeer(cfg *Config) (string, error) {
@@ -154,12 +158,14 @@ func sendData() {
 		return
 	}
 
-	// make a message that's 1000 random bytes
-	msg := make([]byte, 1000)
+	// make a message that's in the range of 1,000-10,000 random bytes
+	size := rand.Intn(9001) + 1000
+	msg := make([]byte, size)
 	crand.Read(msg)
 	if err := p2p.SendData(conn.ID, msg); err != nil {
 		log.Log().Errorf("Failed to send data on conn %s: %s", conn.ID, err)
 	}
+	metrics.AddMessage(msg)
 }
 
 func randomOpenOutgoingConnection() (p2p.Connection, error) {
@@ -189,6 +195,7 @@ func closeConnection() {
 	if err := control.CloseConnection(conn.ID); err != nil {
 		log.Log().Errorf("Failed to close connection %s: %s", conn.ID, err)
 	}
+	metrics.AddConnClose(conn.ID)
 }
 
 func query() {
@@ -212,9 +219,11 @@ func query() {
 	}
 	others := filter(conn.Participants(), func(p string) bool { return p != p2p.GetFullAddr() })
 
-	if err := control.QueryForMessage(others[rand.Intn(len(others))], conn, message.SeqNo); err != nil {
+	query, resp, err := control.QueryForMessage(others[rand.Intn(len(others))], conn, message.SeqNo)
+	if err != nil {
 		log.Log().Errorf("Query for %s:%d failed: %s", message.ConnID, message.SeqNo, err)
 	}
+	metrics.AddQuery(query, resp)
 }
 
 func requestPeers() {
