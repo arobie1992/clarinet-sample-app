@@ -314,6 +314,8 @@ func registerWithDirectory(cfg *Config) error {
 		return errors.New("Failed to register")
 	}
 	for len(p2p.GetLibp2pNode().Peerstore().Peers()) < cfg.SampleApp.MinPeers+1 {
+		sleepTime := time.Duration(rand.Intn(500) + 500) * time.Millisecond
+		time.Sleep(sleepTime)
 		url := fmt.Sprintf("http://%s/peers?numPeers=%d&requestor=%s", cfg.SampleApp.Directory, cfg.SampleApp.NumPeers, p2p.GetFullAddr())
 		resp, err = http.Get(url)
 		if err != nil {
