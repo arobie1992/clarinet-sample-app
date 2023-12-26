@@ -67,12 +67,12 @@ start_nodes() {
     done
 }
 
-num_configs=3
+num_configs=20
 directory_url=directory-vm:8080
-num_peers=5
-min_peers=2
-activity_period=5
-total_actions=10
+num_peers=15
+min_peers=15
+activity_period=0.25
+total_actions=1000
 
 mkdir /clarinet
 cd /clarinet

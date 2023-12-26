@@ -264,7 +264,7 @@ type sampleAppConfig struct {
 	Directory          string
 	NumPeers           int
 	MinPeers           int
-	ActivityPeriodSecs int
+	ActivityPeriodSecs float64
 	TotalActions       int
 }
 
