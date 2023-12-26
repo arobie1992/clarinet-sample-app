@@ -59,6 +59,7 @@ func scheduler(cfgFile string) {
 	}
 	for i := 0; i < cfg.SampleApp.TotalActions; i += 1 {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
+		log.Log().Infof("Action: %d/%d", i, cfg.SampleApp.TotalActions)
 		switch rand.Intn(6) {
 		// switch i {
 		case 0:
