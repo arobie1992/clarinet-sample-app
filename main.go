@@ -93,13 +93,16 @@ func initiateConnection(cfg *Config) {
 	// might change this to max connections instead
 	peer := ""
 	for i := 0; i < 5; i++ {
+		log.Log().Infof("Attempt %d/5 to get random peer", i)
 		possiblePeer, err := randomPeer(cfg)
 		if err != nil {
 			log.Log().Errorf("Error while getting peer: %s", err)
 			continue
 		}
+		log.Log().Infof("Got possible peer %s", possiblePeer)
 
 		var cnt int64 = 0
+		log.Log().Infof("Checking for a connection already to %s", possiblePeer)
 		repository.GetDB().Model(&p2p.Connection{}).Where(&p2p.Connection{Receiver: possiblePeer, Status: p2p.ConnectionStatusOpen}).Count(&cnt)
 		if cnt == 0 {
 			peer = possiblePeer
@@ -112,10 +115,13 @@ func initiateConnection(cfg *Config) {
 		return
 	}
 
+	log.Log().Infof("Will attempt to connect to peer %s", peer)
 	connID, err := control.RequestConnection(peer)
 	if err != nil {
 		log.Log().Errorf("Failed to request connection to %s: %s", peer, err)
+		return
 	}
+	log.Log().Infof("Successfully connected to %s", peer)
 	metrics.AddConnOpen(connID)
 }
 
@@ -165,6 +171,7 @@ func sendData() {
 	crand.Read(msg)
 	if err := p2p.SendData(conn.ID, msg); err != nil {
 		log.Log().Errorf("Failed to send data on conn %s: %s", conn.ID, err)
+		return
 	}
 	metrics.AddMessage(msg)
 }

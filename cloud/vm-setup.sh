@@ -67,7 +67,7 @@ start_nodes() {
     done
 }
 
-num_configs=20
+num_configs=5
 directory_url=directory-vm:8080
 num_peers=15
 min_peers=15
