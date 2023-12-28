@@ -59,7 +59,7 @@ func scheduler(cfgFile string) {
 	}
 	for i := 0; i < cfg.SampleApp.TotalActions; i += 1 {
 		time.Sleep(time.Second * time.Duration(cfg.SampleApp.ActivityPeriodSecs))
-		log.Log().Infof("Action: %d/%d", i, cfg.SampleApp.TotalActions)
+		log.Log().Infof("Starting action: %d/%d", i, cfg.SampleApp.TotalActions)
 		switch rand.Intn(6) {
 		// switch i {
 		case 0:
@@ -73,8 +73,10 @@ func scheduler(cfgFile string) {
 		case 4:
 			requestPeers()
 		case 5:
+			log.Log().Info("Idling for now.")
 			// just idle
 		}
+		log.Log().Infof("Finished action: %d/%d", i, cfg.SampleApp.TotalActions)
 	}
 	log.Log().Info("Finished own actions. Send metrics and then just idle and respond to other nodes.")
 	metrics.SendMetrics(cfg.SampleApp.Directory)
@@ -235,9 +237,11 @@ func query() {
 }
 
 func requestPeers() {
+	log.Log().Info("Attempting to request peers from node")
 	peers := filter(p2p.GetLibp2pNode().Peerstore().Peers(), func(peerID peer.ID) bool {
 		return !strings.Contains(p2p.GetFullAddr(), peerID.String())
 	})
+	log.Log().Info("Finished filtering peers")
 
 	if len(peers) == 0 {
 		log.Log().Info("No peers available to request peers from.")
