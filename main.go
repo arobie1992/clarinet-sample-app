@@ -125,6 +125,7 @@ func initiateConnection(cfg *Config) {
 	}
 	log.Log().Infof("Successfully connected to %s", peer)
 	metrics.AddConnOpen(connID)
+	log.Log().Info("Added metrics for opened connection")
 }
 
 func randomPeer(cfg *Config) (string, error) {
@@ -166,16 +167,20 @@ func sendData() {
 		}
 		return
 	}
+	log.Log().Infof("Selected conn %s to send data on", conn.ID)
 
 	// make a message that's in the range of 1,000-10,000 random bytes
 	size := rand.Intn(9001) + 1000
 	msg := make([]byte, size)
 	crand.Read(msg)
+	log.Log().Info("Generated random message of length %d", size)
 	if err := p2p.SendData(conn.ID, msg); err != nil {
 		log.Log().Errorf("Failed to send data on conn %s: %s", conn.ID, err)
 		return
 	}
+	log.Log().Info("Finished sending message without error")
 	metrics.AddMessage(msg)
+	log.Log().Info("Added metrics data for message")
 }
 
 func randomOpenOutgoingConnection() (p2p.Connection, error) {
@@ -202,10 +207,13 @@ func closeConnection() {
 		}
 		return
 	}
+	log.Log().Infof("Selected connection %s to close", conn.ID)
 	if err := control.CloseConnection(conn.ID); err != nil {
 		log.Log().Errorf("Failed to close connection %s: %s", conn.ID, err)
 	}
+	log.Log().Infof("Finished closing connection %s without error", conn.ID)
 	metrics.AddConnClose(conn.ID)
+	log.Log().Info("Added metrics for closed connection")
 }
 
 func query() {
@@ -221,19 +229,25 @@ func query() {
 		return
 	}
 	message := messages[0]
+	log.Log().Infof("Selected message %s:%d to query", message.ConnID, message.SeqNo)
+
 	conn := p2p.Connection{ID: message.ConnID}
 	tx = repository.GetDB().Find(&conn)
 	if tx.Error != nil {
 		log.Log().Errorf("Failed to find connectin %s: %s", conn.ID, tx.Error)
 		return
 	}
+	log.Log().Infof("Successfully retrieved connection %s from database", conn.ID)
 	others := filter(conn.Participants(), func(p string) bool { return p != p2p.GetFullAddr() })
+	log.Log().Info("Finished finding other participants")
 
 	query, resp, err := control.QueryForMessage(others[rand.Intn(len(others))], conn, message.SeqNo)
 	if err != nil {
 		log.Log().Errorf("Query for %s:%d failed: %s", message.ConnID, message.SeqNo, err)
 	}
+	log.Log().Info("Finished querying without error")
 	metrics.AddQuery(query, resp)
+	log.Log().Info("Finished adding metrics for query")
 }
 
 func requestPeers() {
@@ -250,15 +264,18 @@ func requestPeers() {
 
 	ind := rand.Intn(len(peers))
 	peer := peers[ind]
+	log.Log().Infof("Selected node %s to request peers from", peer)
 	addrs := p2p.GetLibp2pNode().Peerstore().Addrs(peer)
 	if len(addrs) == 0 {
 		log.Log().Warnf("Peer %s has no addresses.", peer)
 		return
 	}
 	addr := addrs[0].String() + "/p2p/" + peer.String()
+	log.Log().Infof("Using address %s", addr)
 	if err := control.SendRequestPeersRequest(addr, 10); err != nil {
 		log.Log().Errorf("Got error while requesting peers from node %s: %s", addr, err)
 	}
+	log.Log().Infof("Finished requesting peers without error")
 }
 
 func filter[T interface{}](vals []T, cond func(T) bool) []T {
