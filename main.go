@@ -32,6 +32,9 @@ func main() {
 
 	cfgFile := os.Args[1]
 
+	// hopefully set debug logging for libp2p
+	os.Setenv("GOLOG_LOG_LEVEL", "DEBUG")
+
 	go func() {
 		if err := goclarinet.Start(cfgFile); err != nil {
 			log.Log().Fatalf("%s", err)
