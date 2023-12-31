@@ -3,7 +3,7 @@ module arobie1992github.com/arobie1992/clarinet-sample-app
 go 1.21.1
 
 require (
-	github.com/arobie1992/go-clarinet v0.0.0-20231231030303-cb4e66741669
+	github.com/arobie1992/go-clarinet v0.0.0-20231231035932-6108ed4337c4
 	github.com/google/uuid v1.5.0
 	github.com/libp2p/go-libp2p v0.32.2
 	gorm.io/gorm v1.25.5
