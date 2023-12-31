@@ -17,6 +17,8 @@ github.com/arobie1992/go-clarinet v0.0.0-20231231022946-2a8bc5e69af2 h1:ijLA586L
 github.com/arobie1992/go-clarinet v0.0.0-20231231022946-2a8bc5e69af2/go.mod h1:SiIHl4OabuGHx/GJ14cKaFbQqZIBeeif4w0gFPDt+dg=
 github.com/arobie1992/go-clarinet v0.0.0-20231231024104-07aabb4b8b99 h1:FYcy/SwSamwJrXWioGedG2fpHhGRfBk/lXP+KLCQboA=
 github.com/arobie1992/go-clarinet v0.0.0-20231231024104-07aabb4b8b99/go.mod h1:SiIHl4OabuGHx/GJ14cKaFbQqZIBeeif4w0gFPDt+dg=
+github.com/arobie1992/go-clarinet v0.0.0-20231231030303-cb4e66741669 h1:rPnEZRqT6bs0lU8S4QG/m9gFLAI7RGVOs+a4jbSRbRw=
+github.com/arobie1992/go-clarinet v0.0.0-20231231030303-cb4e66741669/go.mod h1:SiIHl4OabuGHx/GJ14cKaFbQqZIBeeif4w0gFPDt+dg=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.5 h1:VvXlSJBzZpA/zum6Sj74hxwYI2DIxRWuNIoXAzHZz5o=
